@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: network-security-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: MONGODB_URL_KEY
+        sync: false
+      - key: DAGSHUB_TOKEN
+        sync: false
+      - key: DAGSHUB_USERNAME
+        value: "Yeswan1"

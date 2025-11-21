@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <title>
+        Data Table
+    </title>
+    <style>
+    table{
+       border-collapse: collapse;
+       width: 100%;
+    }
+    th,td{
+        border: 1px solid block;
+        padding:8px;
+        text-align: left;
+    }
+    </style>
+    <head>
+        <body>
+            <h2>Predicted data</h2>
+            {{ table | safe}}
+        </body>
+    </head>
+</html>
