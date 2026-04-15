@@ -15,8 +15,8 @@ from networksecurity.entity.artifact_entity import DataIngestionArtifact
 from dotenv import load_dotenv
 load_dotenv()
 
-# ✅ ENV variable (correct key)
-MONGO_DB_URL = os.getenv("MONGODB_URL_KEY")
+# ✅ FIXED: remove hidden spaces
+MONGO_DB_URL = os.getenv("MONGODB_URL_KEY").strip()
 
 # ✅ TLS certificate
 ca = certifi.where()
@@ -39,25 +39,29 @@ class DataIngestion:
 
             print(f"📦 DB: {database_name}, Collection: {collection_name}")
 
-            # ✅ MongoDB connection with TLS (IMPORTANT)
+            # ✅ MongoDB connection with TLS
             self.mongo_client = pymongo.MongoClient(
                 MONGO_DB_URL,
                 tls=True,
                 tlsCAFile=ca
             )
 
+            # ✅ FORCE connection check
+            self.mongo_client.admin.command('ping')
+            print("✅ MongoDB connection successful")
+
             collection = self.mongo_client[database_name][collection_name]
 
             data = list(collection.find())
 
+            # ❌ If no data → stop immediately
             if len(data) == 0:
                 raise Exception("❌ No data found in MongoDB")
 
             df = pd.DataFrame(data)
+
             print("🔥 RAW DATA:", data)
             print("🔥 DATAFRAME SHAPE:", df.shape)
-
-            print("🔥 DATA FROM MONGODB:", df.shape)
 
             # Drop MongoDB _id
             if "_id" in df.columns:
@@ -66,7 +70,8 @@ class DataIngestion:
             # Replace 'na' with NaN
             df.replace({"na": np.nan}, inplace=True)
 
-            print("✅ FINAL DATAFRAME:", df.head())
+            print("✅ FINAL DATAFRAME:")
+            print(df.head())
 
             return df
 
@@ -82,7 +87,7 @@ class DataIngestion:
 
             dataframe.to_csv(feature_store_file_path, index=False, header=True)
 
-            logging.info("Saved feature store file")
+            logging.info("✅ Saved feature store file")
 
             return dataframe
 
@@ -91,6 +96,7 @@ class DataIngestion:
 
     def split_data_as_train_test(self, dataframe: pd.DataFrame):
         try:
+            # ❌ Prevent empty split
             if len(dataframe) < 2:
                 raise Exception("❌ Not enough data for train/test split")
 
@@ -99,7 +105,7 @@ class DataIngestion:
                 test_size=self.data_ingestion_config.train_test_split_ratio
             )
 
-            logging.info("Train-test split completed")
+            logging.info("✅ Train-test split completed")
 
             dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
             os.makedirs(dir_path, exist_ok=True)
