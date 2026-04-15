@@ -54,6 +54,8 @@ class DataIngestion:
                 raise Exception("❌ No data found in MongoDB")
 
             df = pd.DataFrame(data)
+            print("🔥 RAW DATA:", data)
+            print("🔥 DATAFRAME SHAPE:", df.shape)
 
             print("🔥 DATA FROM MONGODB:", df.shape)
 
