@@ -66,12 +66,27 @@ class DataValidationConfig:
                 "config", "schema.yaml"
             )
 
-            # 🔥 IMPORTANT FIX
+            # ✅ Drift report
             self.drift_report_file_path = os.path.join(
                 training_pipeline_config.artifact_dir,
                 "data_validation",
                 "drift_report",
                 "report.yaml"
+            )
+
+            # 🔥 ADD THESE (YOUR CURRENT ERROR FIX)
+            self.valid_train_file_path = os.path.join(
+                training_pipeline_config.artifact_dir,
+                "data_validation",
+                "validated",
+                "train.csv"
+            )
+
+            self.valid_test_file_path = os.path.join(
+                training_pipeline_config.artifact_dir,
+                "data_validation",
+                "validated",
+                "test.csv"
             )
 
         except Exception as e:
