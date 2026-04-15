@@ -2,12 +2,13 @@ import sys
 import os
 import certifi
 
-ca = certifi.where()
-
 from dotenv import load_dotenv
 load_dotenv()
 
+# ✅ Mongo URL from ENV
 mongo_db_url = os.getenv("MONGODB_URL_KEY")
+
+ca = certifi.where()
 
 import pymongo
 from networksecurity.exception.exception import NetworkSecurityException
@@ -15,7 +16,7 @@ from networksecurity.logging.logger import logging
 from networksecurity.pipeline.training_pipeline import TrainingPipeline
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, UploadFile, Request
+from fastapi import FastAPI, File, UploadFile
 from uvicorn import run as app_run
 from fastapi.responses import Response
 from starlette.responses import RedirectResponse
@@ -24,19 +25,21 @@ import pandas as pd
 from networksecurity.utils.main_utils.utils import load_object
 from networksecurity.utils.ml_utils.model.estimator import NetworkModel
 
-# 🔥 Safe MongoDB connection (no crash)
+
+# ✅ SAFE MongoDB connection (TLS FIX)
 client = None
 try:
     if mongo_db_url:
         client = pymongo.MongoClient(
             mongo_db_url,
-            tlsCAFile=ca,
-            serverSelectionTimeoutMS=5000
+            tls=True,
+            tlsCAFile=ca
         )
         client.server_info()
-        print("MongoDB connected")
+        print("MongoDB connected ✅")
 except Exception as e:
-    print("MongoDB FAILED:", e)
+    print("MongoDB FAILED ❌:", e)
+
 
 from networksecurity.constant.training_pipeline import DATA_INGESTION_COLLECTION_NAME
 from networksecurity.constant.training_pipeline import DATA_INGESTION_DATABASE_NAME
@@ -45,19 +48,21 @@ if client:
     database = client[DATA_INGESTION_DATABASE_NAME]
     collection = database[DATA_INGESTION_COLLECTION_NAME]
 
+
+# ✅ FastAPI app
 app = FastAPI()
 
 # CORS
-origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Root → Swagger
+
+# ✅ Root → Swagger
 @app.get("/", tags=["authentication"])
 async def index():
     return RedirectResponse(url="/docs")
@@ -74,7 +79,7 @@ async def train_route():
         return {"error": str(e)}
 
 
-# ✅ PREDICT API (FIXED — no template, only JSON)
+# ✅ PREDICT API
 @app.post("/predict")
 async def predict_route(file: UploadFile = File(...)):
     try:
@@ -101,6 +106,6 @@ async def predict_route(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 
-# Run server
+# ✅ Run server
 if __name__ == "__main__":
     app_run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
