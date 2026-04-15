@@ -1,20 +1,21 @@
-from networksecurity.exception.exception import NetworkSecurityException
-from networksecurity.logging.logger import logging
-from networksecurity.entity.config_entity import DataIngestionConfig
-
 import os
 import sys
 import numpy as np
 import pandas as pd
 import pymongo
 import certifi
+
 from sklearn.model_selection import train_test_split
+
+from networksecurity.exception.exception import NetworkSecurityException
+from networksecurity.logging.logger import logging
+from networksecurity.entity.config_entity import DataIngestionConfig
 from networksecurity.entity.artifact_entity import DataIngestionArtifact
 
 from dotenv import load_dotenv
 load_dotenv()
 
-# ✅ Correct ENV variable
+# ✅ ENV variable (correct key)
 MONGO_DB_URL = os.getenv("MONGODB_URL_KEY")
 
 # ✅ TLS certificate
@@ -36,7 +37,9 @@ class DataIngestion:
             database_name = self.data_ingestion_config.database_name
             collection_name = self.data_ingestion_config.collection_name
 
-            # ✅ FIXED MongoDB connection (TLS)
+            print(f"📦 DB: {database_name}, Collection: {collection_name}")
+
+            # ✅ MongoDB connection with TLS (IMPORTANT)
             self.mongo_client = pymongo.MongoClient(
                 MONGO_DB_URL,
                 tls=True,
@@ -45,12 +48,23 @@ class DataIngestion:
 
             collection = self.mongo_client[database_name][collection_name]
 
-            df = pd.DataFrame(list(collection.find()))
+            data = list(collection.find())
 
+            if len(data) == 0:
+                raise Exception("❌ No data found in MongoDB")
+
+            df = pd.DataFrame(data)
+
+            print("🔥 DATA FROM MONGODB:", df.shape)
+
+            # Drop MongoDB _id
             if "_id" in df.columns:
                 df = df.drop(columns=["_id"])
 
+            # Replace 'na' with NaN
             df.replace({"na": np.nan}, inplace=True)
+
+            print("✅ FINAL DATAFRAME:", df.head())
 
             return df
 
@@ -60,10 +74,13 @@ class DataIngestion:
     def export_data_into_feature_store(self, dataframe: pd.DataFrame):
         try:
             feature_store_file_path = self.data_ingestion_config.feature_store_file_path
-            dir_path = os.path.dirname(feature_store_file_path)
 
+            dir_path = os.path.dirname(feature_store_file_path)
             os.makedirs(dir_path, exist_ok=True)
+
             dataframe.to_csv(feature_store_file_path, index=False, header=True)
+
+            logging.info("Saved feature store file")
 
             return dataframe
 
@@ -72,12 +89,15 @@ class DataIngestion:
 
     def split_data_as_train_test(self, dataframe: pd.DataFrame):
         try:
+            if len(dataframe) < 2:
+                raise Exception("❌ Not enough data for train/test split")
+
             train_set, test_set = train_test_split(
                 dataframe,
                 test_size=self.data_ingestion_config.train_test_split_ratio
             )
 
-            logging.info("Train-test split done")
+            logging.info("Train-test split completed")
 
             dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
             os.makedirs(dir_path, exist_ok=True)
@@ -94,7 +114,8 @@ class DataIngestion:
                 header=True
             )
 
-            logging.info("Saved train & test files")
+            print("✅ Train shape:", train_set.shape)
+            print("✅ Test shape:", test_set.shape)
 
         except Exception as e:
             raise NetworkSecurityException(e, sys)
