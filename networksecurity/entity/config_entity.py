@@ -19,7 +19,7 @@ class TrainingPipelineConfig:
             raise NetworkSecurityException(e, sys)
 
 
-# 🔥 FIXED CLASS
+# ✅ FIXED
 class DataIngestionConfig:
     def __init__(
         self,
@@ -28,11 +28,9 @@ class DataIngestionConfig:
         collection_name="data"
     ):
         try:
-            # ✅ MongoDB config
             self.database_name = database_name
             self.collection_name = collection_name
 
-            # ✅ File paths
             self.feature_store_file_path = os.path.join(
                 training_pipeline_config.artifact_dir,
                 "data_ingestion",
@@ -54,18 +52,26 @@ class DataIngestionConfig:
                 "test.csv"
             )
 
-            # ✅ Split ratio
             self.train_test_split_ratio = 0.2
 
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
 
+# ✅ FIXED (THIS WAS YOUR ERROR)
 class DataValidationConfig:
     def __init__(self, training_pipeline_config: TrainingPipelineConfig):
         try:
             self.schema_file_path = os.path.join(
                 "config", "schema.yaml"
+            )
+
+            # 🔥 IMPORTANT FIX
+            self.drift_report_file_path = os.path.join(
+                training_pipeline_config.artifact_dir,
+                "data_validation",
+                "drift_report",
+                "report.yaml"
             )
 
         except Exception as e:
