@@ -7,17 +7,20 @@ import sys
 import numpy as np
 import pandas as pd
 import pymongo
-from typing import List
+import certifi
 from sklearn.model_selection import train_test_split
 from networksecurity.entity.artifact_entity import DataIngestionArtifact
 
 from dotenv import load_dotenv
 load_dotenv()
 
-# ✅ FIXED: correct ENV variable name
+# ✅ Correct ENV variable
 MONGO_DB_URL = os.getenv("MONGODB_URL_KEY")
 
-print("Mongo URL:", MONGO_DB_URL)  # debug (you can remove later)
+# ✅ TLS certificate
+ca = certifi.where()
+
+print("Mongo URL:", MONGO_DB_URL)
 
 
 class DataIngestion:
@@ -28,21 +31,27 @@ class DataIngestion:
             raise NetworkSecurityException(e, sys)
 
     def export_collection_as_dataframe(self):
-        """Read the data from MongoDB"""
+        """Read data from MongoDB"""
         try:
             database_name = self.data_ingestion_config.database_name
             collection_name = self.data_ingestion_config.collection_name
 
-            # ✅ FIXED: using correct MongoDB URL
-            self.mongo_client = pymongo.MongoClient(MONGO_DB_URL)
+            # ✅ FIXED MongoDB connection (TLS)
+            self.mongo_client = pymongo.MongoClient(
+                MONGO_DB_URL,
+                tls=True,
+                tlsCAFile=ca
+            )
 
             collection = self.mongo_client[database_name][collection_name]
+
             df = pd.DataFrame(list(collection.find()))
 
-            if "_id" in df.columns.to_list():
-                df = df.drop(columns=["_id"], axis=1)
+            if "_id" in df.columns:
+                df = df.drop(columns=["_id"])
 
             df.replace({"na": np.nan}, inplace=True)
+
             return df
 
         except Exception as e:
@@ -68,7 +77,7 @@ class DataIngestion:
                 test_size=self.data_ingestion_config.train_test_split_ratio
             )
 
-            logging.info("Performed train test split")
+            logging.info("Train-test split done")
 
             dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
             os.makedirs(dir_path, exist_ok=True)
@@ -93,15 +102,17 @@ class DataIngestion:
     def initiate_data_ingestion(self):
         try:
             dataframe = self.export_collection_as_dataframe()
+
             dataframe = self.export_data_into_feature_store(dataframe)
+
             self.split_data_as_train_test(dataframe)
 
-            dataingestionartifact = DataIngestionArtifact(
+            data_ingestion_artifact = DataIngestionArtifact(
                 trained_file_path=self.data_ingestion_config.training_file_path,
                 test_file_path=self.data_ingestion_config.testing_file_path
             )
 
-            return dataingestionartifact
+            return data_ingestion_artifact
 
         except Exception as e:
             raise NetworkSecurityException(e, sys)
